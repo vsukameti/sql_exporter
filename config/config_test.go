@@ -7,10 +7,10 @@ import (
 
 func TestResolveCollectorRefs(t *testing.T) {
 	colls := map[string]*CollectorConfig{
-		"a":  &CollectorConfig{Name: "a"},
-		"b":  &CollectorConfig{Name: "b"},
-		"c":  &CollectorConfig{Name: "b"},
-		"aa": &CollectorConfig{Name: "aa"},
+		"a":  {Name: "a"},
+		"b":  {Name: "b"},
+		"c":  {Name: "b"},
+		"aa": {Name: "aa"},
 	}
 
 	t.Run("NoGlobbing", func(t *testing.T) {
@@ -87,4 +87,87 @@ func TestResolveCollectorRefs(t *testing.T) {
 			t.Fatalf("expected err=%q but got err=%q", expected, err.Error())
 		}
 	})
+}
+
+// // write a test for readDSNFromAwsSecretManager function
+// func TestReadDSNFromAwsSecretManager(t *testing.T) {
+// 	t.Run("NoDSN", func(t *testing.T) {
+// 		secret := &secretsmanager.GetSecretValueOutput{}
+// 		err := readDSNFromAwsSecretManager(secret)
+// 		var expected Secret = "No DSN found in secret"
+// 		if err == nil {
+// 			t.Fatalf("expected error but got none")
+// 		}
+// 		if err != expected {
+// 			t.Fatalf("expected err=%q but got err=%q", expected, err)
+// 		}
+// 	})
+// 	t.Run("DSN", func(t *testing.T) {
+// 		secret := &secretsmanager.GetSecretValueOutput{
+// 			SecretString: aws.String("dsn"),
+// 		}
+// 		dsn, err := readDSNFromAwsSecretManager(secret)
+// 		if err != nil {
+// 			t.Fatalf("expected no error but got: %v", err)
+// 		}
+// 		if dsn != "dsn" {
+// 			t.Fatalf("expected dsn=%q but got dsn=%q", "dsn", dsn)
+// 		}
+// 	})
+// }
+//
+
+// write a test for LoadCollectorFiles function
+func TestLoadCollectorFiles(t *testing.T) {
+	t.Run("NoFiles", func(t *testing.T) {
+		config := Config{
+			Globals:        &GlobalConfig{},
+			CollectorFiles: []string{},
+			Target:         &TargetConfig{},
+			Jobs:           []*JobConfig{},
+			Collectors:     []*CollectorConfig{},
+			configFile:     "",
+			XXX:            map[string]any{},
+		}
+		err := config.loadCollectorFiles()
+		if err != nil {
+			t.Fatalf("expected no error but got: %v", err)
+		}
+		//		if len(collectorConfigs) != 0 {
+		//			t.Fatalf("expected len(collectorConfigs)=0 but got len(collectorConfigs)=%d", len(collectorConfigs))
+		//		}
+	})
+	//	t.Run("Files", func(t *testing.T) {
+	//		//		collectorFiles := []string{"testdata/collector.yaml"}
+	//		config := Config{
+	//			Globals:        &GlobalConfig{},
+	//			CollectorFiles: []string{},
+	//			Target:         &TargetConfig{},
+	//			Jobs:           []*JobConfig{},
+	//			Collectors:     []*CollectorConfig{},
+	//			configFile:     "",
+	//			XXX:            map[string]any{},
+	//		}
+	//		err := config.LoadCollectorFiles()
+	//		if err != nil {
+	//			t.Fatalf("expected no error but got: %v", err)
+	//		}
+	//		//if len(collectorConfigs) != 1 {
+	//		//	t.Fatalf("expected len(collectorConfigs)=1 but got len(collectorConfigs)=%d", len(collectorConfigs))
+	//		//}
+	//		expected := []*CollectorConfig{
+	//			{
+	//				Name: "test",
+	//				Queries: []Query{
+	//					{
+	//						Name: "test",
+	//						SQL:  "SELECT 1",
+	//					},
+	//				},
+	//			},
+	//		}
+	//		if !reflect.DeepEqual(collectorConfigs, expected) {
+	//			t.Fatalf("expected collectorConfigs=%v but got collectorConfigs=%v", expected, collectorConfigs)
+	//		}
+	//	})
 }
