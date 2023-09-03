@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	appName               string        = "sql_exporter"
 	envConfigFile         string        = "SQLEXPORTER_CONFIG"
 	envDebug              string        = "SQLEXPORTER_DEBUG"
 	httpReadHeaderTimeout time.Duration = time.Duration(time.Second * 60)
@@ -38,7 +39,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(version.NewCollector("sql_exporter"))
+	prometheus.MustRegister(version.NewCollector(appName))
 }
 
 func main() {
@@ -74,7 +75,7 @@ func main() {
 	}
 
 	if *showVersion {
-		fmt.Println(version.Print("sql_exporter"))
+		fmt.Println(version.Print(appName))
 		os.Exit(0)
 	}
 
@@ -105,16 +106,23 @@ func main() {
 	}
 }
 
-// OfBool returns bool address.
-func OfBool(i bool) *bool {
-	return &i
-}
-
 func reloadCollectors(e sql_exporter.Exporter) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 		klog.Warning("Reloading collectors has started...")
 		klog.Warning("Connections will not be changed upon the restart of the exporter")
 		exporterNewConfig, err := cfg.Load(*configFile)
+=======
+		klog.Infof("Reloading the collectors...")
+		config := e.Config()
+		if err := config.ReloadCollectorFiles(); err != nil {
+			klog.Errorf("Error reloading collector configs - %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		// FIXME: Should be t.Collectors() instead of config.Collectors
+		target, err := sql_exporter.NewTarget("", string(config.Target.Name), string(config.Target.DSN), config.Collectors, nil, config.Globals)
+>>>>>>> 301c50a (wip: watch for scrape errors)
 		if err != nil {
 			klog.Errorf("Error reading config file - %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -188,6 +196,7 @@ func reloadCollectors(e sql_exporter.Exporter) func(http.ResponseWriter, *http.R
 		http.Error(w, "", http.StatusInternalServerError)
 	}
 }
+<<<<<<< HEAD
 
 // LogFunc is an adapter to allow the use of any function as a promhttp.Logger. If f is a function, LogFunc(f) is a
 // promhttp.Logger that calls f.
@@ -197,3 +206,5 @@ type LogFunc func(args ...any)
 func (log LogFunc) Println(args ...any) {
 	log(args)
 }
+=======
+>>>>>>> 301c50a (wip: watch for scrape errors)

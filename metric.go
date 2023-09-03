@@ -35,7 +35,7 @@ type MetricFamily struct {
 
 // NewMetricFamily creates a new MetricFamily with the given metric config and const labels (e.g. job and instance).
 func NewMetricFamily(logContext string, mc *config.MetricConfig, constLabels []*dto.LabelPair) (*MetricFamily, errors.WithContext) {
-	logContext = fmt.Sprintf("%s, metric=%q", logContext, mc.Name)
+	logContext = fmt.Sprintf(`%s,metric=%s`, logContext, mc.Name)
 
 	if len(mc.Values) == 0 {
 		return nil, errors.New(logContext, "no value column defined")

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/burningalchemist/sql_exporter/config"
@@ -17,6 +18,7 @@ import (
 const envDsnOverride = "SQLEXPORTER_TARGET_DSN"
 
 var dsnOverride = flag.String("config.data-source-name", "", "Data source name to override the value in the configuration file with.")
+var SvcRegistry = prometheus.NewRegistry()
 
 // Exporter is a prometheus.Gatherer that gathers SQL metrics from targets and merges them with the default registry.
 type Exporter interface {
@@ -33,7 +35,8 @@ type exporter struct {
 	config  *config.Config
 	targets []Target
 
-	ctx context.Context
+	ctx          context.Context
+	scrapeErrors *prometheus.CounterVec
 }
 
 // NewExporter returns a new Exporter with the provided config.
@@ -56,7 +59,7 @@ func NewExporter(configFile string) (Exporter, error) {
 
 	var targets []Target
 	if c.Target != nil {
-		target, err := NewTarget("", "", string(c.Target.DSN), c.Target.Collectors(), nil, c.Globals)
+		target, err := NewTarget("", string(c.Target.Name), string(c.Target.DSN), c.Target.Collectors(), nil, c.Globals)
 		if err != nil {
 			return nil, err
 		}
@@ -75,18 +78,22 @@ func NewExporter(configFile string) (Exporter, error) {
 		}
 	}
 
+	scrapeErrors := registerSvcMetrics()
+
 	return &exporter{
-		config:  c,
-		targets: targets,
-		ctx:     context.Background(),
+		config:       c,
+		targets:      targets,
+		ctx:          context.Background(),
+		scrapeErrors: scrapeErrors,
 	}, nil
 }
 
 func (e *exporter) WithContext(ctx context.Context) Exporter {
 	return &exporter{
-		config:  e.config,
-		targets: e.targets,
-		ctx:     ctx,
+		config:       e.config,
+		targets:      e.targets,
+		ctx:          ctx,
+		scrapeErrors: e.scrapeErrors,
 	}
 }
 
@@ -124,6 +131,12 @@ func (e *exporter) Gather() ([]*dto.MetricFamily, error) {
 		dtoMetric := &dto.Metric{}
 		if err := metric.Write(dtoMetric); err != nil {
 			errs = append(errs, err)
+			ctxLabels := parseLogCtx(err.Context())
+			e.scrapeErrors.WithLabelValues(
+				ctxLabels["job"],
+				ctxLabels["target"],
+				ctxLabels["collector"],
+				ctxLabels["query"]).Inc()
 			continue
 		}
 		metricDesc := metric.Desc()
@@ -161,4 +174,26 @@ func (e *exporter) Config() *config.Config {
 
 func (e *exporter) UpdateTarget(target []Target) {
 	e.targets = target
+}
+
+// registerSvcMetrics registers the metrics for the exporter itself.
+func registerSvcMetrics() *prometheus.CounterVec {
+	scrapeErrors := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "scrape_errors",
+		Help: "Total number of scrape errors per job, target, collector and query.",
+	}, []string{"job", "target", "collector", "query"})
+	SvcRegistry.MustRegister(scrapeErrors)
+	return scrapeErrors
+}
+
+// write a function to split comma separated list of key=value pairs
+// and return a map of key value pairs
+func parseLogCtx(list string) map[string]string {
+	m := make(map[string]string)
+	for _, item := range strings.Split(list, ",") {
+		key := strings.Split(item, "=")[0]
+		value := strings.Split(item, "=")[1]
+		m[key] = value
+	}
+	return m
 }

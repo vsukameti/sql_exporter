@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,9 +58,19 @@ func NewTarget(
 	Target, errors.WithContext,
 ) {
 	if name != "" {
-		logContext = fmt.Sprintf("%s, target=%q", logContext, name)
+		logContext = fmt.Sprintf(`%s,target=%s`, logContext, name)
+		constLabels = prometheus.Labels{
+			"instance": name,
+		}
 	}
 
+	// Leading comma appears when target name is undefined, which is a side-effect of running in single target mode.
+	// Let's trim to avoid confusions.
+	if strings.HasPrefix(logContext, ",") {
+		logContext = strings.TrimLeft(logContext, ", ")
+	}
+
+	// Sort const labels by name to ensure consistent ordering.
 	constLabelPairs := make([]*dto.LabelPair, 0, len(constLabels))
 	for n, v := range constLabels {
 		constLabelPairs = append(constLabelPairs, &dto.LabelPair{
